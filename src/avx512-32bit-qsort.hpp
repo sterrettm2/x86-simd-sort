@@ -8,7 +8,7 @@
 #ifndef AVX512_QSORT_32BIT
 #define AVX512_QSORT_32BIT
 
-#include "avx512-common-qsort.h"
+#include "xss-common-qsort.h"
 #include "xss-network-qsort.hpp"
 
 /*
@@ -146,6 +146,15 @@ struct zmm_vector<int32_t> {
     {
         return sort_zmm_32bit<zmm_vector<type_t>>(x);
     }
+    static inline int32_t partition_vec(type_t *arr,
+                                    int64_t left,
+                                    int64_t right,
+                                    const reg_t curr_vec,
+                                    const reg_t pivot_vec,
+                                    reg_t *smallest_vec,
+                                    reg_t *biggest_vec){
+                                        return partition_vec_avx512<zmm_vector<type_t>>(arr, left, right, curr_vec, pivot_vec, smallest_vec, biggest_vec);
+                                    }
 };
 template <>
 struct zmm_vector<uint32_t> {
@@ -263,6 +272,15 @@ struct zmm_vector<uint32_t> {
     {
         return sort_zmm_32bit<zmm_vector<type_t>>(x);
     }
+    static inline int32_t partition_vec(type_t *arr,
+                                    int64_t left,
+                                    int64_t right,
+                                    const reg_t curr_vec,
+                                    const reg_t pivot_vec,
+                                    reg_t *smallest_vec,
+                                    reg_t *biggest_vec){
+                                        return partition_vec_avx512<zmm_vector<type_t>>(arr, left, right, curr_vec, pivot_vec, smallest_vec, biggest_vec);
+                                    }
 };
 template <>
 struct zmm_vector<float> {
@@ -394,6 +412,15 @@ struct zmm_vector<float> {
     {
         return sort_zmm_32bit<zmm_vector<type_t>>(x);
     }
+    static inline int32_t partition_vec(type_t *arr,
+                                    int64_t left,
+                                    int64_t right,
+                                    const reg_t curr_vec,
+                                    const reg_t pivot_vec,
+                                    reg_t *smallest_vec,
+                                    reg_t *biggest_vec){
+                                        return partition_vec_avx512<zmm_vector<type_t>>(arr, left, right, curr_vec, pivot_vec, smallest_vec, biggest_vec);
+                                    }
 };
 
 /*

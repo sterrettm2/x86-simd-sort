@@ -7,7 +7,7 @@
 #ifndef AVX512_16BIT_COMMON
 #define AVX512_16BIT_COMMON
 
-#include "avx512-common-qsort.h"
+#include "xss-common-qsort.h"
 #include "xss-network-qsort.hpp"
 
 /*

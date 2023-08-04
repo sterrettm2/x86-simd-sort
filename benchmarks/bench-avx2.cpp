@@ -1,5 +1,4 @@
 #include "avx2-32bit-qsort.hpp"
-#include "cpuinfo.h"
 #include "rand_array.h"
 #include <benchmark/benchmark.h>
 

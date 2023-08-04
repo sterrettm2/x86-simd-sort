@@ -140,6 +140,15 @@ struct zmm_vector<_Float16> {
     {
         return sort_zmm_16bit<zmm_vector<type_t>>(x);
     }
+    static inline int32_t partition_vec(type_t *arr,
+                                    int64_t left,
+                                    int64_t right,
+                                    const reg_t curr_vec,
+                                    const reg_t pivot_vec,
+                                    reg_t *smallest_vec,
+                                    reg_t *biggest_vec){
+                                        return partition_vec_avx512<zmm_vector<type_t>>(arr, left, right, curr_vec, pivot_vec, smallest_vec, biggest_vec);
+                                    }
 };
 
 template <>
