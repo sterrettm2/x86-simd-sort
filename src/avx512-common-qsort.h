@@ -354,6 +354,11 @@ static inline int64_t partition_avx512_unrolled(type_t *arr,
                                                 type_t *smallest,
                                                 type_t *biggest)
 {
+    if constexpr (num_unroll == 0) {
+        return partition_avx512<vtype>(
+                arr, left, right, pivot, smallest, biggest);
+    }
+
     if (right - left <= 2 * num_unroll * vtype::numlanes) {
         return partition_avx512<vtype>(
                 arr, left, right, pivot, smallest, biggest);
@@ -673,7 +678,23 @@ static inline int64_t partition_avx512(type_t1 *keys,
 template <typename vtype, typename type_t>
 X86_SIMD_SORT_INLINE type_t get_pivot(type_t *arr,
                                       const int64_t left,
-                                      const int64_t right);
+                                      const int64_t right)
+{
+    constexpr int64_t numSamples = vtype::numlanes;
+    type_t samples[numSamples];
+
+    int64_t delta = (right - left) / numSamples;
+
+    for (int i = 0; i < numSamples; i++) {
+        samples[i] = arr[left + i * delta];
+    }
+
+    auto vec = vtype::loadu(samples);
+    vec = vtype::sort_vec(vec);
+    vtype::storeu(samples, vec);
+
+    return samples[numSamples / 2];
+}
 
 template <typename vtype, int64_t maxN>
 X86_SIMD_SORT_INLINE void sort_n(typename vtype::type_t *arr, int N);
@@ -701,17 +722,9 @@ static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
     type_t smallest = vtype::type_max();
     type_t biggest = vtype::type_min();
 
-    int64_t pivot_index;
-
-    if constexpr (vtype::partition_unroll_factor != 0) {
-        pivot_index = partition_avx512_unrolled<vtype,
-                                                vtype::partition_unroll_factor>(
-                arr, left, right + 1, pivot, &smallest, &biggest);
-    }
-    else {
-        pivot_index = partition_avx512<vtype>(
-                arr, left, right + 1, pivot, &smallest, &biggest);
-    }
+    int64_t pivot_index
+            = partition_avx512_unrolled<vtype, vtype::partition_unroll_factor>(
+                    arr, left, right + 1, pivot, &smallest, &biggest);
 
     if (pivot != smallest)
         qsort_<vtype>(arr, left, pivot_index - 1, max_iters - 1);
@@ -745,17 +758,9 @@ static void qselect_(type_t *arr,
     type_t smallest = vtype::type_max();
     type_t biggest = vtype::type_min();
 
-    int64_t pivot_index;
-
-    if constexpr (vtype::partition_unroll_factor != 0) {
-        pivot_index = partition_avx512_unrolled<vtype,
-                                                vtype::partition_unroll_factor>(
-                arr, left, right + 1, pivot, &smallest, &biggest);
-    }
-    else {
-        pivot_index = partition_avx512<vtype>(
-                arr, left, right + 1, pivot, &smallest, &biggest);
-    }
+    int64_t pivot_index
+            = partition_avx512_unrolled<vtype, vtype::partition_unroll_factor>(
+                    arr, left, right + 1, pivot, &smallest, &biggest);
 
     if ((pivot != smallest) && (pos < pivot_index))
         qselect_<vtype>(arr, pos, left, pivot_index - 1, max_iters - 1);
@@ -820,27 +825,6 @@ inline void avx512_partial_qsort_fp16(uint16_t *arr,
 {
     avx512_qselect_fp16(arr, k - 1, arrsize, hasnan);
     avx512_qsort_fp16(arr, k - 1);
-}
-
-template <typename vtype, typename type_t>
-X86_SIMD_SORT_INLINE type_t get_pivot(type_t *arr,
-                                      const int64_t left,
-                                      const int64_t right)
-{
-    constexpr int64_t numSamples = vtype::numlanes;
-    type_t samples[numSamples];
-    
-    int64_t delta = (right - left) / numSamples;
-    
-    for (int i = 0; i < numSamples; i++){
-        samples[i] = arr[left + i * delta];
-    }
-    
-    auto vec = vtype::loadu(samples);
-    vec = vtype::sort_vec(vec);
-    vtype::storeu(samples, vec);
-    
-    return samples[numSamples / 2 + 1];
 }
 
 #endif // AVX512_QSORT_COMMON
