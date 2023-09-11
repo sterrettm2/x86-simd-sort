@@ -7,6 +7,7 @@ src = include_directories('src')
 bench = include_directories('benchmarks')
 utils = include_directories('utils')
 tests = include_directories('tests')
+hwy = include_directories('highway')
 gtest_dep = dependency('gtest_main', required : true, static: true)
 gbench_dep = dependency('benchmark', required : true, static: true)
 
@@ -29,7 +30,7 @@ testexe = executable('testexe',
                     )
 
 benchexe = executable('benchexe',
-                      include_directories : [src, utils, bench],
+                      include_directories : [src, utils, bench, hwy],
                       dependencies : [gbench_dep],
                       link_args: ['-lbenchmark_main'],
                       link_whole : [libbench],

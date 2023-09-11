@@ -8,7 +8,7 @@ endif
 
 export CXX
 CXXFLAGS	+= $(OPTIMFLAG) $(MARCHFLAG)
-override CXXFLAGS += -I$(SRCDIR) -I$(UTILSDIR)
+override CXXFLAGS += -I$(SRCDIR) -I$(UTILSDIR) -I$(HWYDIR)
 GTESTCFLAGS	:= `pkg-config --cflags gtest_main`
 GTESTLDFLAGS	:= `pkg-config --static --libs gtest_main`
 GBENCHCFLAGS	:= `pkg-config --cflags benchmark`
@@ -20,6 +20,7 @@ SRCDIR		:= ./src
 TESTDIR		:= ./tests
 BENCHDIR	:= ./benchmarks
 UTILSDIR	:= ./utils
+HWYDIR		:= ./highway
 
 SRCS		:= $(wildcard $(addprefix $(SRCDIR)/, *.hpp *.h))
 UTILSRCS	:= $(wildcard $(addprefix $(UTILSDIR)/, *.hpp *.h))
