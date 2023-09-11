@@ -4,7 +4,7 @@ if cpp.has_argument('-march=icelake-client')
   libbench += static_library('bench_qsort',
     files('bench-qsort.cpp', ),
     dependencies: gbench_dep,
-    include_directories : [src, utils],
+    include_directories : [src, utils, hwy],
     cpp_args : ['-O3', '-march=icelake-client'],
     )
 endif
