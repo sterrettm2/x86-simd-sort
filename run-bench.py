@@ -18,7 +18,10 @@ if args.filter is not None:
 if args.benchcompare:
     baseline = ""
     contender = ""
-    if "qsort" in args.benchcompare:
+    if "vqsort" in args.benchcompare:
+        baseline = "vqsort.*" + filterb
+        contender = "avx512qsort.*" + filterb
+    elif "qsort" in args.benchcompare:
         baseline = "stdsort.*" + filterb
         contender = "avx512qsort.*" + filterb
     elif "qselect" in args.benchcompare:
