@@ -100,6 +100,9 @@
 #define X86_SIMD_SORT_UNROLL_LOOP(num)
 #endif
 
+#include <signal.h>
+#include <iostream>
+
 template <typename type>
 struct zmm_vector;
 
@@ -246,8 +249,8 @@ static inline int32_t partition_vec(type_t *arr,
             arr + left, vtype::knot_opmask(ge_mask), curr_vec);
     vtype::mask_compressstoreu(
             arr + right - amount_ge_pivot, ge_mask, curr_vec);
-    *smallest_vec = vtype::min(curr_vec, *smallest_vec);
-    *biggest_vec = vtype::max(curr_vec, *biggest_vec);
+    //*smallest_vec = vtype::min(curr_vec, *smallest_vec);
+    //*biggest_vec = vtype::max(curr_vec, *biggest_vec);
     return amount_ge_pivot;
 }
 /*
@@ -264,8 +267,8 @@ static inline int64_t partition_avx512(type_t *arr,
 {
     /* make array length divisible by vtype::numlanes , shortening the array */
     for (int32_t i = (right - left) % vtype::numlanes; i > 0; --i) {
-        *smallest = std::min(*smallest, arr[left], comparison_func<vtype>);
-        *biggest = std::max(*biggest, arr[left], comparison_func<vtype>);
+        //*smallest = std::min(*smallest, arr[left], comparison_func<vtype>);
+        //*biggest = std::max(*biggest, arr[left], comparison_func<vtype>);
         if (!comparison_func<vtype>(arr[left], pivot)) {
             std::swap(arr[left], arr[--right]);
         }
@@ -291,8 +294,8 @@ static inline int64_t partition_avx512(type_t *arr,
                                                        pivot_vec,
                                                        &min_vec,
                                                        &max_vec);
-        *smallest = vtype::reducemin(min_vec);
-        *biggest = vtype::reducemax(max_vec);
+        //*smallest = vtype::reducemin(min_vec);
+        //*biggest = vtype::reducemax(max_vec);
         return left + (vtype::numlanes - amount_ge_pivot);
     }
 
@@ -360,8 +363,8 @@ template <typename vtype,
           int num_unroll,
           typename type_t = typename vtype::type_t>
 static inline int64_t partition_avx512_unrolled(type_t *arr,
-                                                int64_t left,
-                                                int64_t right,
+                                                uint64_t left,
+                                                uint64_t right,
                                                 type_t pivot,
                                                 type_t *smallest,
                                                 type_t *biggest)
@@ -378,8 +381,8 @@ static inline int64_t partition_avx512_unrolled(type_t *arr,
     /* make array length divisible by 8*vtype::numlanes , shortening the array */
     for (int32_t i = ((right - left) % (num_unroll * vtype::numlanes)); i > 0;
          --i) {
-        *smallest = std::min(*smallest, arr[left], comparison_func<vtype>);
-        *biggest = std::max(*biggest, arr[left], comparison_func<vtype>);
+        //*smallest = std::min(*smallest, arr[left], comparison_func<vtype>);
+        //*biggest = std::max(*biggest, arr[left], comparison_func<vtype>);
         if (!comparison_func<vtype>(arr[left], pivot)) {
             std::swap(arr[left], arr[--right]);
         }
@@ -406,11 +409,15 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
                 arr + (right - vtype::numlanes * (num_unroll - ii)));
     }
     // store points of the vectors
-    int64_t r_store = right - vtype::numlanes;
-    int64_t l_store = left;
+    uint64_t r_store = right - vtype::numlanes;
+    uint64_t l_store = left;
     // indices for loading the elements
     left += num_unroll * vtype::numlanes;
     right -= num_unroll * vtype::numlanes;
+    
+    uint64_t unpartitioned = r_store - l_store;
+    //std::cout << "UNP: " << unpartitioned << ", UNP/vtype::numlanes: " << (((double) unpartitioned) / vtype::numlanes) << "\n";
+    
     while (right - left != 0) {
         reg_t curr_vec[num_unroll];
         /*
@@ -435,45 +442,75 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
 // partition the current vector and save it on both sides of the array
 X86_SIMD_SORT_UNROLL_LOOP(8)
         for (int ii = 0; ii < num_unroll; ++ii) {
-            int32_t amount_ge_pivot
-                    = partition_vec<vtype>(arr,
-                                           l_store,
-                                           r_store + vtype::numlanes,
-                                           curr_vec[ii],
-                                           pivot_vec,
-                                           &min_vec,
-                                           &max_vec);
+            
+            auto& vec = curr_vec[ii];
+            
+            // Partition vec body
+            typename vtype::opmask_t ge_mask = vtype::ge(vec, pivot_vec);
+            uint64_t amount_ge_pivot = _mm_popcnt_u64(ge_mask);
+            vtype::mask_compressstoreu(
+                    arr + l_store, vtype::knot_opmask(ge_mask), vec);
+            
             l_store += (vtype::numlanes - amount_ge_pivot);
-            r_store -= amount_ge_pivot;
+                    
+            vtype::mask_compressstoreu(
+                    arr + l_store + unpartitioned, ge_mask, vec);
+            
+            unpartitioned -= vtype::numlanes;
+            
+            //min_vec = vtype::min(vec, min_vec);
+            //max_vec = vtype::max(vec, max_vec);
+            
+            // Normal old code
         }
     }
 
 /* partition and save vec_left[8] and vec_right[8] */
 X86_SIMD_SORT_UNROLL_LOOP(8)
     for (int ii = 0; ii < num_unroll; ++ii) {
-        int32_t amount_ge_pivot
-                = partition_vec<vtype>(arr,
-                                       l_store,
-                                       r_store + vtype::numlanes,
-                                       vec_left[ii],
-                                       pivot_vec,
-                                       &min_vec,
-                                       &max_vec);
+        
+        auto& vec = vec_left[ii];
+        
+        // Partition vec body
+        typename vtype::opmask_t ge_mask = vtype::ge(vec, pivot_vec);
+        uint64_t amount_ge_pivot = _mm_popcnt_u64(ge_mask);
+        vtype::mask_compressstoreu(
+                arr + l_store, vtype::knot_opmask(ge_mask), vec);
+        
         l_store += (vtype::numlanes - amount_ge_pivot);
-        r_store -= amount_ge_pivot;
+                
+        vtype::mask_compressstoreu(
+                arr + l_store + unpartitioned, ge_mask, vec);
+        
+        unpartitioned -= vtype::numlanes;
+        
+        //min_vec = vtype::min(vec, min_vec);
+        //max_vec = vtype::max(vec, max_vec);
+        
+        // Normal old code
     }
 X86_SIMD_SORT_UNROLL_LOOP(8)
     for (int ii = 0; ii < num_unroll; ++ii) {
-        int32_t amount_ge_pivot
-                = partition_vec<vtype>(arr,
-                                       l_store,
-                                       r_store + vtype::numlanes,
-                                       vec_right[ii],
-                                       pivot_vec,
-                                       &min_vec,
-                                       &max_vec);
+        
+        auto& vec = vec_right[ii];
+        
+        // Partition vec body
+        typename vtype::opmask_t ge_mask = vtype::ge(vec, pivot_vec);
+        uint64_t amount_ge_pivot = _mm_popcnt_u64(ge_mask);
+        vtype::mask_compressstoreu(
+                arr + l_store, vtype::knot_opmask(ge_mask), vec);
+        
         l_store += (vtype::numlanes - amount_ge_pivot);
-        r_store -= amount_ge_pivot;
+                
+        vtype::mask_compressstoreu(
+                arr + l_store + unpartitioned, ge_mask, vec);
+        
+        unpartitioned -= vtype::numlanes;
+        
+        //min_vec = vtype::min(vec, min_vec);
+        //max_vec = vtype::max(vec, max_vec);
+        
+        // Normal old code
     }
     *smallest = vtype::reducemin(min_vec);
     *biggest = vtype::reducemax(max_vec);
@@ -572,8 +609,8 @@ static inline int64_t partition_avx512(type_t1 *keys,
 {
     /* make array length divisible by vtype1::numlanes , shortening the array */
     for (int32_t i = (right - left) % vtype1::numlanes; i > 0; --i) {
-        *smallest = std::min(*smallest, keys[left]);
-        *biggest = std::max(*biggest, keys[left]);
+        //*smallest = std::min(*smallest, keys[left]);
+        //*biggest = std::max(*biggest, keys[left]);
         if (keys[left] > pivot) {
             right--;
             std::swap(keys[left], keys[right]);
