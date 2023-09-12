@@ -100,9 +100,6 @@
 #define X86_SIMD_SORT_UNROLL_LOOP(num)
 #endif
 
-#include <signal.h>
-#include <iostream>
-
 template <typename type>
 struct zmm_vector;
 
@@ -416,7 +413,6 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
     right -= num_unroll * vtype::numlanes;
     
     uint64_t unpartitioned = r_store - l_store;
-    //std::cout << "UNP: " << unpartitioned << ", UNP/vtype::numlanes: " << (((double) unpartitioned) / vtype::numlanes) << "\n";
     
     while (right - left != 0) {
         reg_t curr_vec[num_unroll];
@@ -425,7 +421,7 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
          * then next elements are loaded from the right side,
          * otherwise from the left side
          */
-        if ((r_store + vtype::numlanes) - right < left - l_store) {
+        if ((l_store + unpartitioned + vtype::numlanes) - right < left - l_store) {
             right -= num_unroll * vtype::numlanes;
 X86_SIMD_SORT_UNROLL_LOOP(8)
             for (int ii = 0; ii < num_unroll; ++ii) {
@@ -460,8 +456,6 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
             
             //min_vec = vtype::min(vec, min_vec);
             //max_vec = vtype::max(vec, max_vec);
-            
-            // Normal old code
         }
     }
 
