@@ -43,7 +43,11 @@ struct zmm_vector<float16> {
     {
         return _knot_mask32(x);
     }
-
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        // TODO look into more proper implementation
+        return _mm512_cmp_epi16_mask(x,y, _MM_CMPINT_EQ);
+    }
     static opmask_t ge(reg_t x, reg_t y)
     {
         reg_t sign_x = _mm512_and_si512(x, _mm512_set1_epi16(0x8000));
@@ -199,7 +203,10 @@ struct zmm_vector<int16_t> {
     {
         return _knot_mask32(x);
     }
-
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_epi16_mask(x,y, _MM_CMPINT_EQ);
+    }
     static opmask_t ge(reg_t x, reg_t y)
     {
         return _mm512_cmp_epi16_mask(x, y, _MM_CMPINT_NLT);
@@ -312,6 +319,10 @@ struct zmm_vector<uint16_t> {
     static opmask_t knot_opmask(opmask_t x)
     {
         return _knot_mask32(x);
+    }
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_epu16_mask(x,y, _MM_CMPINT_EQ);
     }
     static opmask_t ge(reg_t x, reg_t y)
     {

@@ -1010,12 +1010,11 @@ X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
     
     // Most basic version; simply check that it is not equal to every other datapoint
     int64_t num = right - left;
-    //int64_t numVecs = num / vtype::numlanes;
-    //int64_t numScalar = num - numVecs * vtype::numlanes;
-    int64_t numScalar = num;
+    int64_t numVecs = num / vtype::numlanes;
+    int64_t numScalar = num - numVecs * vtype::numlanes;
     
     // Handle vectors
-    type_t *loadIndex = arr + left;/*
+    type_t *loadIndex = arr + left;
     for (int i = 0; i < numVecs; i++){
         reg_t arrVec = vtype::loadu(loadIndex);
         auto neq = vtype::knot_opmask(vtype::eq(pivotVec, arrVec));
@@ -1024,7 +1023,7 @@ X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
         if (neqCount != 0) return true;
         
         loadIndex += vtype::numlanes;
-    }*/
+    }
     
     // Handle scalars
     for (int i = 0; i < numScalar; i++){

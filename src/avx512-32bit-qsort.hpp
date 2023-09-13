@@ -57,6 +57,10 @@ struct zmm_vector<int32_t> {
     {
         return _mm512_knot(x);
     }
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_epi32_mask(x, y, _MM_CMPINT_EQ);
+    }
     static opmask_t ge(reg_t x, reg_t y)
     {
         return _mm512_cmp_epi32_mask(x, y, _MM_CMPINT_NLT);
@@ -184,6 +188,10 @@ struct zmm_vector<uint32_t> {
     {
         return _mm512_knot(x);
     }
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_epu32_mask(x, y, _MM_CMPINT_EQ);
+    }
     static opmask_t ge(reg_t x, reg_t y)
     {
         return _mm512_cmp_epu32_mask(x, y, _MM_CMPINT_NLT);
@@ -290,6 +298,10 @@ struct zmm_vector<float> {
     static opmask_t knot_opmask(opmask_t x)
     {
         return _mm512_knot(x);
+    }
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_ps_mask(x, y, _CMP_EQ_OQ);
     }
     static opmask_t ge(reg_t x, reg_t y)
     {

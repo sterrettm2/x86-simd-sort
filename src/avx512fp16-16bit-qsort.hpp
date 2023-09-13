@@ -49,6 +49,10 @@ struct zmm_vector<_Float16> {
     {
         return _knot_mask32(x);
     }
+    static opmask_t eq(reg_t x, reg_t y)
+    {
+        return _mm512_cmp_ph_mask(x, y, _CMP_EQ_OQ);
+    }
     static opmask_t ge(reg_t x, reg_t y)
     {
         return _mm512_cmp_ph_mask(x, y, _CMP_GE_OQ);
