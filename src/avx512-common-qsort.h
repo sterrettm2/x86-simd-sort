@@ -857,6 +857,12 @@ template <typename vtype, int64_t maxN>
 X86_SIMD_SORT_INLINE void sort_n(typename vtype::type_t *arr, int N);
 
 template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      type_t &pivot);
+
+template <typename vtype, typename type_t>
 static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
 {
     /*
@@ -875,7 +881,12 @@ static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
         return;
     }
 
-    type_t pivot = get_pivot<vtype, type_t>(arr, left, right);
+    type_t pivot;
+    if (!get_pivot_smart<vtype, type_t>(arr, left, right, pivot)){
+        return;
+    }
+    get_pivot<vtype, type_t>(arr, left, right);
+    
     type_t smallest = vtype::type_max();
     type_t biggest = vtype::type_min();
 
@@ -982,6 +993,49 @@ inline void avx512_partial_qsort_fp16(uint16_t *arr,
 {
     avx512_qselect_fp16(arr, k - 1, arrsize, hasnan);
     avx512_qsort_fp16(arr, k - 1);
+}
+
+template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      type_t &pivot)
+{
+    using reg_t = typename vtype::reg_t;
+    
+    pivot = get_pivot<vtype, type_t>(arr, left, right);
+    
+    // Load a vector for comparisons
+    reg_t pivotVec = vtype::set1(pivot);
+    
+    // Most basic version; simply check that it is not equal to every other datapoint
+    int64_t num = right - left;
+    //int64_t numVecs = num / vtype::numlanes;
+    //int64_t numScalar = num - numVecs * vtype::numlanes;
+    int64_t numScalar = num;
+    
+    // Handle vectors
+    type_t *loadIndex = arr + left;/*
+    for (int i = 0; i < numVecs; i++){
+        reg_t arrVec = vtype::loadu(loadIndex);
+        auto neq = vtype::knot_opmask(vtype::eq(pivotVec, arrVec));
+        int32_t neqCount = _mm_popcnt_u64(neq);
+        
+        if (neqCount != 0) return true;
+        
+        loadIndex += vtype::numlanes;
+    }*/
+    
+    // Handle scalars
+    for (int i = 0; i < numScalar; i++){
+        
+        if (pivot != *loadIndex) return true;
+        
+        loadIndex += 1;
+    }
+    
+    // No elements non-equal? Then the array is all equivalent and thus already sorted, so don't continue
+    return false;
 }
 
 #endif // AVX512_QSORT_COMMON
