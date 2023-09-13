@@ -861,6 +861,45 @@ X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
                                       const int64_t left,
                                       const int64_t right,
                                       type_t &pivot);
+                                      
+template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      type_t &pivot);
+
+#include <iostream>
+#include <vector>
+
+template <typename vtype, typename type_t>
+void percentile(type_t *arr, type_t value, int64_t left, int64_t right){
+    
+    // Copy the array locally
+    
+    std::vector<type_t> data;
+    
+    for (int i = 0; i < right - left + 1; i++){
+        data.push_back(arr[left + i]);
+    }
+    
+    // Sort the array
+    
+    std::sort(data.begin(), data.end());
+    
+    double count = 0;
+    for (auto &x : data){
+        //std::cout << x << ", " << value << "\n"; 
+        if (x < value)
+            count += 1;
+        else
+            break;
+    }
+    
+    double percentile = 100 * ((double) count) / (double) (right - left);
+    
+    //std::cout << "Pivot was percentile " << percentile << "\n";
+    std::cout << percentile << '\n';
+}
 
 template <typename vtype, typename type_t>
 static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
@@ -882,10 +921,10 @@ static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
     }
 
     type_t pivot;
-    if (!get_pivot_smart<vtype, type_t>(arr, left, right, pivot)){
+    if (!get_pivot_block<vtype, type_t>(arr, left, right, pivot)){
         return;
     }
-    get_pivot<vtype, type_t>(arr, left, right);
+    //percentile<vtype, type_t>(arr, pivot, left, right);
     
     type_t smallest = vtype::type_max();
     type_t biggest = vtype::type_min();
@@ -993,6 +1032,122 @@ inline void avx512_partial_qsort_fp16(uint16_t *arr,
 {
     avx512_qselect_fp16(arr, k - 1, arrsize, hasnan);
     avx512_qsort_fp16(arr, k - 1);
+}
+
+template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE type_t * get_block_address(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      const int64_t currIndex,
+                                      const int64_t totalBlocks)
+{
+    // TODO check if we are aligned to the size of a single type_t? Seems like this is not required by the standard
+    // fall back to some different logic if we are not aligned
+    constexpr int cacheLineSize = 64;
+    constexpr int64_t upperMask = ~(cacheLineSize - 1);
+    constexpr int64_t perCacheLine = cacheLineSize / sizeof(type_t);
+    
+    // TODO make the block alignment stuff actually work
+    int64_t newRight = right - 2 * perCacheLine;
+    int64_t width = newRight - left;
+    int64_t delta = width / totalBlocks;
+    int64_t offset = left + delta * currIndex;
+    return arr + offset;
+    
+    
+    
+    /*
+    // Find lowest block index and the largest block
+    
+    uintptr_t byteArr = (uintptr_t) (arr + left);
+    
+    type_t * firstBlock = (type_t *) std::max(byteArr & upperMask, (byteArr + cacheLineSize - 1) & upperMask);
+    
+    int numLostToAlignment = firstBlock - arr;
+    
+    int width = right - left - numLostToAlignment - perCacheLine;
+    int numBlocks = width / perCacheLine;
+    
+    int deltaBlocks = numBlocks / totalBlocks;
+    
+    int blockOffset = currIndex * deltaBlocks;
+    int trueOffset = blockOffset * perCacheLine;
+    
+    return firstBlock + trueOffset;*/
+}
+
+template <typename type_t>
+void print_samples(type_t * arr, int num){
+    for (int i = 0; i < num; i++){
+        std::cout << arr[i] << ", ";
+    }
+    std::cout << "\n";
+}
+
+template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      type_t &pivot)
+{
+    using reg_t = typename vtype::reg_t;
+    constexpr int64_t numBlocks = 3; // NOTE I am assuming here we never have a vector that holds less than 4 elements
+    
+    reg_t minVec = vtype::set1(vtype::type_max());
+    reg_t maxVec = vtype::set1(vtype::type_min());
+    
+    type_t data[vtype::numlanes]; // NOTE we only use the first numBlocks elements of this, could we just make it that long?
+    for (int64_t i = 0; i < numBlocks; i++){
+        constexpr uint64_t numToLoad = vtype::numlanes - 1;
+        constexpr uint64_t loadMask = ((0x1ull << numToLoad) - 0x1ull);
+        
+        type_t * blockAddress = get_block_address<vtype, type_t>(arr, left, right, i, numBlocks);
+        
+        reg_t vec = vtype::mask_loadu(vtype::zmm_max(), loadMask, blockAddress);
+        vec = vtype::sort_vec(vec);
+        
+        minVec = vtype::min(minVec, vec);
+        maxVec = vtype::max(maxVec, vec);
+        
+        type_t samples[vtype::numlanes];
+        vtype::storeu(samples, vec);
+        
+        type_t median = samples[vtype::numlanes / 2 - 1];
+        data[i] = median;
+    }
+    
+    type_t minimum = vtype::reducemin(minVec);
+    type_t maximum = vtype::reducemax(maxVec);
+    
+    if (minimum == maximum){
+        // Every sample was equal? Don't return this pivot, search to try and find a non-equal element
+        // TODO real code
+        pivot = data[0];
+        return true;
+    }else{
+        // Find the true pivot
+        constexpr uint64_t loadMask = ((0x1ull << numBlocks) - 0x1ull);
+        reg_t vec = vtype::mask_loadu(vtype::zmm_max(), loadMask, data);
+        vec = vtype::sort_vec(vec);
+        
+        type_t samples[vtype::numlanes];
+        vtype::storeu(samples, vec);
+        
+        pivot = samples[numBlocks / 2];
+        if (pivot == minimum){
+            // We need to find something larger than our current pivot to use as pivot
+            // TODO real code (maybe consider other values in the samples array?)
+            return true;
+        }else if (pivot == maximum){
+            // We need to find something smaller than our current pivot to use as pivot
+            // TODO real code (maybe consider other values in the samples array?)
+            return true;
+        }else{
+            // An acceptable pivot, no more work required
+            return true;
+        }
+    }
+    
 }
 
 template <typename vtype, typename type_t>
