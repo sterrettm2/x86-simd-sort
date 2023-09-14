@@ -888,7 +888,6 @@ void percentile(type_t *arr, type_t value, int64_t left, int64_t right){
     
     double count = 0;
     for (auto &x : data){
-        //std::cout << x << ", " << value << "\n"; 
         if (x < value)
             count += 1;
         else
@@ -1085,6 +1084,12 @@ void print_samples(type_t * arr, int num){
 }
 
 template <typename vtype, typename type_t>
+X86_SIMD_SORT_INLINE bool all_equal_pivot(type_t *arr,
+                                      const int64_t left,
+                                      const int64_t right,
+                                      type_t pivot);
+
+template <typename vtype, typename type_t>
 X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
                                       const int64_t left,
                                       const int64_t right,
@@ -1116,6 +1121,12 @@ X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
         data[i] = median;
     }
     
+    constexpr uint64_t numToLoad = vtype::numlanes - 1;
+    constexpr uint64_t loadMask = ((0x1ull << numToLoad) - 0x1ull);
+    
+    minVec = vtype::mask_mov(vtype::set1(vtype::type_max()), loadMask, minVec);
+    maxVec = vtype::mask_mov(vtype::set1(vtype::type_min()), loadMask, maxVec);
+    
     type_t minimum = vtype::reducemin(minVec);
     type_t maximum = vtype::reducemax(maxVec);
     
@@ -1123,7 +1134,7 @@ X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
         // Every sample was equal? Don't return this pivot, search to try and find a non-equal element
         // TODO real code
         pivot = data[0];
-        return true;
+        return all_equal_pivot<vtype, type_t>(arr, left, right, pivot);
     }else{
         // Find the true pivot
         constexpr uint64_t loadMask = ((0x1ull << numBlocks) - 0x1ull);
@@ -1151,14 +1162,12 @@ X86_SIMD_SORT_INLINE bool get_pivot_block(type_t *arr,
 }
 
 template <typename vtype, typename type_t>
-X86_SIMD_SORT_INLINE bool get_pivot_smart(type_t *arr,
+X86_SIMD_SORT_INLINE bool all_equal_pivot(type_t *arr,
                                       const int64_t left,
                                       const int64_t right,
-                                      type_t &pivot)
+                                      type_t pivot)
 {
     using reg_t = typename vtype::reg_t;
-    
-    pivot = get_pivot<vtype, type_t>(arr, left, right);
     
     // Load a vector for comparisons
     reg_t pivotVec = vtype::set1(pivot);
