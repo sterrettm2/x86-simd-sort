@@ -435,7 +435,7 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
             }
             left += num_unroll * vtype::numlanes;
         }
-// partition the current vector and save it on both sides of the array
+/*// partition the current vector and save it on both sides of the array
 X86_SIMD_SORT_UNROLL_LOOP(8)
         for (int ii = 0; ii < num_unroll; ++ii) {
             
@@ -456,9 +456,36 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
             
             //min_vec = vtype::min(vec, min_vec);
             //max_vec = vtype::max(vec, max_vec);
+        }*/
+        
+        typename vtype::opmask_t masks[num_unroll];
+        int ltPivot[num_unroll];
+        // First calculate masks
+X86_SIMD_SORT_UNROLL_LOOP(8)
+        for (int ii = 0; ii < num_unroll; ++ii){
+            auto& vec = curr_vec[ii];
+            masks[ii] = vtype::ge(vec, pivot_vec);
+            ltPivot[ii] = vtype::numlanes - _mm_popcnt_u64(masks[ii]);
+        }
+    
+X86_SIMD_SORT_UNROLL_LOOP(8)
+        for (int ii = 0; ii < num_unroll; ++ii) {
+            
+            auto& vec = curr_vec[ii];
+            
+            // Partition vec body
+            typename vtype::opmask_t &ge_mask = masks[ii];
+            vtype::mask_compressstoreu(
+                    arr + l_store, vtype::knot_opmask(ge_mask), vec);
+            
+            l_store += ltPivot[ii];
+                    
+            vtype::mask_compressstoreu(
+                    arr + l_store + unpartitioned, ge_mask, vec);
+            
+            unpartitioned -= vtype::numlanes;
         }
     }
-
 /* partition and save vec_left[8] and vec_right[8] */
 X86_SIMD_SORT_UNROLL_LOOP(8)
     for (int ii = 0; ii < num_unroll; ++ii) {
