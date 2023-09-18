@@ -140,6 +140,12 @@ struct zmm_vector<_Float16> {
     {
         return sort_zmm_16bit<zmm_vector<type_t>>(x);
     }
+    static reg_t cast_from(__m512i v){
+        return _mm512_castsi512_ph(v);
+    }
+    static __m512i cast_to(reg_t v){
+        return _mm512_castph_si512(v);
+    }
 };
 
 template <>

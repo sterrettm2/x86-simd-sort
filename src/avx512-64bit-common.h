@@ -559,6 +559,12 @@ struct zmm_vector<int64_t> {
     {
         return sort_zmm_64bit<zmm_vector<type_t>>(x);
     }
+    static reg_t cast_from(__m512i v){
+        return v;
+    }
+    static __m512i cast_to(reg_t v){
+        return v;
+    }
 };
 template <>
 struct zmm_vector<uint64_t> {
@@ -679,6 +685,12 @@ struct zmm_vector<uint64_t> {
     static reg_t sort_vec(reg_t x)
     {
         return sort_zmm_64bit<zmm_vector<type_t>>(x);
+    }
+    static reg_t cast_from(__m512i v){
+        return v;
+    }
+    static __m512i cast_to(reg_t v){
+        return v;
     }
 };
 template <>
@@ -812,6 +824,12 @@ struct zmm_vector<double> {
     static reg_t sort_vec(reg_t x)
     {
         return sort_zmm_64bit<zmm_vector<type_t>>(x);
+    }
+    static reg_t cast_from(__m512i v){
+        return _mm512_castsi512_pd(v);
+    }
+    static __m512i cast_to(reg_t v){
+        return _mm512_castpd_si512(v);
     }
 };
 
