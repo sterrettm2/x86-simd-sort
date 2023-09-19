@@ -4,6 +4,23 @@
 #include "avx512-common-qsort.h"
 //#include "xss-network-luts.hpp"
 
+// TODO remove these
+
+#include <iostream>
+template <typename vtype, typename reg_t = typename vtype::reg_t>
+void printVecs(reg_t * vecs, int numVecs){
+    using type_t = typename vtype::type_t;
+    for (int i = 0; i < numVecs; i++){
+        type_t data[vtype::numlanes];
+        vtype::storeu(data, vecs[i]);
+        for (int j = 0; j < vtype::numlanes; j++){
+            std::cout << data[j] << "\t";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n\n\n";
+}
+
 
 /*constexpr int ctimeBitIndex(const int64_t x){
     int count = 0;
@@ -19,6 +36,9 @@ X86_SIMD_SORT_INLINE typename vtype::reg_t swap_n(typename vtype::reg_t reg);
 
 template <typename vtype, int64_t scale>
 X86_SIMD_SORT_INLINE typename vtype::reg_t reverse_n(typename vtype::reg_t reg);
+
+template <typename vtype, int64_t numVecs, int64_t scale, bool first = true>
+X86_SIMD_SORT_INLINE void internal_sort_n_vec(typename vtype::reg_t * reg);
 
 template <typename vtype,
           int64_t numVecs,
@@ -60,8 +80,10 @@ template <typename vtype,
           int64_t numVecs,
           int64_t scale,
           typename reg_t = typename vtype::reg_t>
-X86_SIMD_SORT_INLINE void merge_step_n_vec(reg_t *regs)
+X86_SIMD_SORT_INLINE void merge_substep_n_vec(reg_t *regs)
 {
+    if constexpr (numVecs <= 1) return;
+    
     // Reverse upper half of vectors
     for (int i = numVecs / 2; i < numVecs; i++){
         regs[i] = reverse_n<vtype, scale>(regs[i]);
@@ -71,10 +93,23 @@ X86_SIMD_SORT_INLINE void merge_step_n_vec(reg_t *regs)
         COEX<vtype>(regs[i], regs[numVecs - 1 - i]);
     }
     
+    merge_substep_n_vec<vtype, numVecs / 2, scale>(regs);
+    merge_substep_n_vec<vtype, numVecs / 2, scale>(regs + numVecs / 2);
     
-    // Now cleanup individual vectors
-    //... do things!
-    //maybe use the name clean for this part?
+}
+
+template <typename vtype,
+          int64_t numVecs,
+          int64_t scale,
+          typename reg_t = typename vtype::reg_t>
+X86_SIMD_SORT_INLINE void merge_step_n_vec(reg_t *regs)
+{
+    merge_substep_n_vec<vtype, numVecs, scale>(regs);
+    
+    // Do some work on each individual register
+    internal_sort_n_vec<vtype, numVecs, scale>(regs);
+    
+    //printVecs<vtype>(regs, numVecs);
     
 }
 
@@ -125,7 +160,10 @@ X86_SIMD_SORT_UNROLL_LOOP(64)
     }
 
 // Run the initial sorting network
+//std::cout << "AT BITONIC SORT\n";
+//printVecs<vtype>(vecs, numVecs);
     bitonic_sort_n_vec<vtype, numVecs>(vecs);
+    //printVecs<vtype>(vecs, numVecs);
     
 // Merge vectors together
     merge_n_vec<vtype, numVecs>(vecs);
@@ -219,4 +257,55 @@ X86_SIMD_SORT_INLINE typename vtype::reg_t swap_n(typename vtype::reg_t reg){
     
     return vtype::cast_from(v);
 }
+
+template <typename vtype, int64_t scale>
+X86_SIMD_SORT_INLINE typename vtype::reg_t merge_n(typename vtype::reg_t reg, typename vtype::reg_t other){
+    using reg_t = typename vtype::reg_t;
+    using type_t = typename vtype::type_t;
+    
+    __m512i v1 = vtype::cast_to(reg);
+    __m512i v2 = vtype::cast_to(other);
+    
+    if constexpr (sizeof(type_t) == 8){
+        if constexpr (scale == 2){
+            v1 = _mm512_mask_blend_epi64(0b01010101, v1, v2);
+        }else if constexpr (scale == 4){
+            v1 = _mm512_mask_blend_epi64(0b00110011, v1, v2);
+        }else if constexpr (scale == 8){
+            v1 = _mm512_mask_blend_epi64(0b00001111, v1, v2);
+        }else{
+            static_assert(scale == 4, "should not be reached");
+        }
+    }
+    
+    return vtype::cast_from(v1);
+}
+
+template <typename vtype, int64_t numVecs, int64_t scale, bool first>
+X86_SIMD_SORT_INLINE void internal_sort_n_vec(typename vtype::reg_t * reg){
+    using reg_t = typename vtype::reg_t;
+    if constexpr (scale <= 1){
+        return;
+    }else{
+        if constexpr (first){
+            // Use reverse then merge
+            for (int i = 0; i < numVecs; i++){
+                reg_t &v = reg[i];
+                reg_t rev = reverse_n<vtype, scale>(v);
+                COEX<vtype>(rev, v);
+                v = merge_n<vtype, scale>(v, rev);
+            }
+        }else{
+            // Use swap then merge
+            for (int i = 0; i < numVecs; i++){
+                reg_t &v = reg[i];
+                reg_t swap = swap_n<vtype, scale>(v);
+                COEX<vtype>(swap, v);
+                v = merge_n<vtype, scale>(v, swap);
+            }
+        }
+        internal_sort_n_vec<vtype, numVecs, scale / 2, false>(reg);
+    }
+}
+
 #endif
