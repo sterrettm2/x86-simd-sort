@@ -216,9 +216,11 @@ X86_SIMD_SORT_INLINE typename vtype::reg_t reverse_n(typename vtype::reg_t reg){
             }
         }else if constexpr (sizeof(type_t) == 4){
             if constexpr (scale == 4){
-                
+                __m512i mask = _mm512_set_epi32(12,13,14,15,8,9,10,11,4,5,6,7,0,1,2,3);
+                v = _mm512_permutexvar_epi32(mask, v);
             }else if constexpr (scale == 8){
-                
+                __m512i mask = _mm512_set_epi32(8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7);
+                v = _mm512_permutexvar_epi32(mask, v);
             }else{
                 static_assert(scale == 4, "should not be reached");
             }
@@ -276,7 +278,20 @@ X86_SIMD_SORT_INLINE typename vtype::reg_t merge_n(typename vtype::reg_t reg, ty
         }else{
             static_assert(scale == 4, "should not be reached");
         }
+    }else if constexpr (sizeof(type_t) == 4){
+        if constexpr (scale == 2){
+            v1 = _mm512_mask_blend_epi32(0b0101010101010101, v1, v2);
+        }else if constexpr (scale == 4){
+            v1 = _mm512_mask_blend_epi32(0b0011001100110011, v1, v2);
+        }else if constexpr (scale == 8){
+            v1 = _mm512_mask_blend_epi32(0b0000111100001111, v1, v2);
+        }else if constexpr (scale == 16){
+            v1 = _mm512_mask_blend_epi32(0b0000000011111111, v1, v2);
+        }else{
+            static_assert(scale == 4, "should not be reached");
+        }
     }
+    
     
     return vtype::cast_from(v1);
 }
