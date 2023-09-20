@@ -7,7 +7,10 @@ src = include_directories('src')
 bench = include_directories('benchmarks')
 utils = include_directories('utils')
 tests = include_directories('tests')
+
+run_command('scripts/hwysetup.sh', check: false)
 hwy = include_directories('highway')
+
 gtest_dep = dependency('gtest_main', required : true, static: true)
 gbench_dep = dependency('benchmark', required : true, static: true)
 
