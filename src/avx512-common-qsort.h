@@ -84,7 +84,7 @@
 #define X86_SIMD_SORT_FINLINE static __attribute__((always_inline))
 #elif defined(__GNUC__)
 #define X86_SIMD_SORT_INLINE static inline
-#define X86_SIMD_SORT_FINLINE static __attribute__((always_inline))
+#define X86_SIMD_SORT_FINLINE static inline __attribute__((always_inline))
 #define LIKELY(x) __builtin_expect((x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)
 #else
@@ -832,6 +832,7 @@ static void qsort_(type_t *arr, int64_t left, int64_t right, int64_t max_iters)
      * Resort to std::sort if quicksort isnt making any progress
      */
     if (max_iters <= 0) {
+        abort(); // For testing; really should not get here
         std::sort(arr + left, arr + right + 1);
         return;
     }
