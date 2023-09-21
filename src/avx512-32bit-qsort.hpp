@@ -283,7 +283,7 @@ struct zmm_vector<float> {
     using halfreg_t = __m256;
     using opmask_t = __mmask16;
     static const uint8_t numlanes = 16;
-    static constexpr int network_sort_threshold = 256;
+    static constexpr int network_sort_threshold = 512;
     static constexpr int partition_unroll_factor = 2;
 
     static type_t type_max()
