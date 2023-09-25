@@ -424,6 +424,7 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
             for (int ii = 0; ii < num_unroll; ++ii) {
                 curr_vec[ii] = vtype::loadu(arr + right + ii * vtype::numlanes);
             }
+            _mm_prefetch(arr + right - num_unroll * vtype::numlanes, _MM_HINT_T0);
         }
         else {
 X86_SIMD_SORT_UNROLL_LOOP(8)
@@ -431,6 +432,7 @@ X86_SIMD_SORT_UNROLL_LOOP(8)
                 curr_vec[ii] = vtype::loadu(arr + left + ii * vtype::numlanes);
             }
             left += num_unroll * vtype::numlanes;
+            _mm_prefetch(arr + left, _MM_HINT_T0);
         }
 // partition the current vector and save it on both sides of the array
 X86_SIMD_SORT_UNROLL_LOOP(8)
