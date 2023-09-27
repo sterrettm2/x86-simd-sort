@@ -2,6 +2,7 @@
 #define XSS_NETWORK_QSORT
 
 #include "avx512-common-qsort.h"
+#include "xss-optimal-networks.hpp"
 
 template <typename vtype,
           int64_t numVecs,
@@ -27,7 +28,18 @@ X86_SIMD_SORT_FINLINE void bitonic_sort_n_vec(reg_t *regs)
 {
     if constexpr (numVecs == 1){
         return;
+    }else if constexpr (numVecs == 2){
+        COEX<vtype>(regs[0], regs[1]);
+    }else if constexpr (numVecs == 4){
+        optimal_sort_4<vtype>(regs);
+    }else if constexpr (numVecs == 8){
+        optimal_sort_8<vtype>(regs);
+    }else if constexpr (numVecs == 16){
+        optimal_sort_16<vtype>(regs);
+    }else if constexpr (numVecs == 32){
+        optimal_sort_32<vtype>(regs);
     }else{
+        // TODO should we remove this branch? I believe it is never used in the current code
         bitonic_sort_n_vec<vtype, numVecs / 2>(regs);
         bitonic_sort_n_vec<vtype, numVecs / 2>(regs + numVecs / 2);
         
@@ -125,9 +137,12 @@ X86_SIMD_SORT_FINLINE void merge_n_vec(reg_t *regs)
 template <typename vtype, int numVecs, typename reg_t = typename vtype::reg_t>
 X86_SIMD_SORT_INLINE void sort_n_vec(typename vtype::type_t *arr, int32_t N)
 {
-    if (numVecs > 1 && N * 2 <= numVecs * vtype::numlanes) {
-        sort_n_vec<vtype, numVecs / 2>(arr, N);
-        return;
+    static_assert(numVecs > 0, "numVecs should be > 0");
+    if constexpr (numVecs > 1){
+        if (N * 2 <= numVecs * vtype::numlanes) {
+            sort_n_vec<vtype, numVecs / 2>(arr, N);
+            return;
+        }
     }
 
     reg_t vecs[numVecs];
