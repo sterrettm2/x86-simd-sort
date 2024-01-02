@@ -33,6 +33,7 @@ struct ymm_vector<float> {
     using regi_t = __m256i;
     using opmask_t = __mmask8;
     static const uint8_t numlanes = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     static type_t type_max()
     {
@@ -216,6 +217,7 @@ struct ymm_vector<uint32_t> {
     using regi_t = __m256i;
     using opmask_t = __mmask8;
     static const uint8_t numlanes = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     static type_t type_max()
     {
@@ -389,6 +391,7 @@ struct ymm_vector<int32_t> {
     using regi_t = __m256i;
     using opmask_t = __mmask8;
     static const uint8_t numlanes = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     static type_t type_max()
     {
@@ -569,6 +572,7 @@ struct zmm_vector<int64_t> {
     static constexpr int network_sort_threshold = 256;
 #endif
     static constexpr int partition_unroll_factor = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     using swizzle_ops = avx512_64bit_swizzle_ops;
 
@@ -747,6 +751,7 @@ struct zmm_vector<uint64_t> {
     static constexpr int network_sort_threshold = 256;
 #endif
     static constexpr int partition_unroll_factor = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     using swizzle_ops = avx512_64bit_swizzle_ops;
 
@@ -917,6 +922,7 @@ struct zmm_vector<double> {
     static constexpr int network_sort_threshold = 256;
 #endif
     static constexpr int partition_unroll_factor = 8;
+    static constexpr simd_type vec_type = simd_type::AVX512;
 
     using swizzle_ops = avx512_64bit_swizzle_ops;
 

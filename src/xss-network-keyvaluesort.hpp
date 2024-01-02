@@ -3,17 +3,7 @@
 
 #include "avx512-64bit-qsort.hpp"
 #include "avx2-64bit-qsort.hpp"
-
-template <int num_lanes>
-struct index_64bit_vector_type;
-template <>
-struct index_64bit_vector_type<8> {
-    using type = zmm_vector<uint64_t>;
-};
-template <>
-struct index_64bit_vector_type<4> {
-    using type = avx2_vector<uint64_t>;
-};
+#include "xss-common-includes.h"
 
 template <typename vtype1,
           typename vtype2,
@@ -390,7 +380,11 @@ template <typename keyType, int maxN>
 X86_SIMD_SORT_INLINE void
 argsort_n(typename keyType::type_t *keys, arrsize_t *indices, int N)
 {
-    using indexType = typename index_64bit_vector_type<keyType::numlanes>::type;
+    static_assert(keyType::numlanes < 16, "Ohno");
+    constexpr bool usingAVX512 = keyType::vec_type == simd_type::AVX512; // TODO just put a flag in the vector types like in the newer pull request
+    using avx2index = int;//typename std::conditional<sizeof(arrsize_t) * keyType::numlanes == 16, avx2_half_vector<arrsize_t>, avx_vector<arrsize_t>>::type;
+    using avx512index = typename std::conditional<sizeof(arrsize_t) * keyType::numlanes == 32, ymm_vector<arrsize_t>, zmm_vector<arrsize_t>>::type;
+    using indexType = typename std::conditional<usingAVX512, avx512index, avx2index>::type;
 
     static_assert(keyType::numlanes == indexType::numlanes,
                   "invalid pairing of value/index types");
