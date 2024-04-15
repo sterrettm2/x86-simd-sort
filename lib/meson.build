@@ -6,7 +6,7 @@ if cpp.has_argument('-march=haswell')
       'x86simdsort-avx2.cpp',
       ),
     include_directories : [src],
-    cpp_args : ['-march=haswell'],
+    cpp_args : ['-march=haswell', '-fopenmp'],
     gnu_symbol_visibility : 'inlineshidden',
     )
 endif
@@ -17,7 +17,7 @@ if cpp.has_argument('-march=skylake-avx512')
       'x86simdsort-skx.cpp',
       ),
     include_directories : [src],
-    cpp_args : ['-march=skylake-avx512'],
+    cpp_args : ['-march=skylake-avx512', '-fopenmp'],
     gnu_symbol_visibility : 'inlineshidden',
     )
 endif
@@ -28,7 +28,7 @@ if cpp.has_argument('-march=icelake-client')
       'x86simdsort-icl.cpp',
       ),
     include_directories : [src],
-    cpp_args : ['-march=icelake-client'],
+    cpp_args : ['-march=icelake-client', '-fopenmp'],
     gnu_symbol_visibility : 'inlineshidden',
     )
 endif
@@ -39,7 +39,7 @@ if cancompilefp16
       'x86simdsort-spr.cpp',
       ),
     include_directories : [src],
-    cpp_args : ['-march=sapphirerapids'],
+    cpp_args : ['-march=sapphirerapids', '-fopenmp'],
     gnu_symbol_visibility : 'inlineshidden',
     )
 endif

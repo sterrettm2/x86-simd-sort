@@ -51,6 +51,15 @@ namespace scalar {
                   arr + arrsize,
                   xss::utils::get_cmp_func<T>(hasnan, reversed));
     }
+    
+    template <typename T>
+    void samplesort(T *arr, size_t arrsize, bool hasnan, bool reversed, int threadCount)
+    {
+        UNUSED(threadCount);
+        std::sort(arr,
+                  arr + arrsize,
+                  xss::utils::get_cmp_func<T>(hasnan, reversed));
+    }
 
     template <typename T>
     void qselect(T *arr, size_t k, size_t arrsize, bool hasnan, bool reversed)

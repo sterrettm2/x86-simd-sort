@@ -4,12 +4,18 @@
 #include "avx512-64bit-argsort.hpp"
 #include "avx512-64bit-qsort.hpp"
 #include "x86simdsort-internal.h"
+#include "xss-common-samplesort.h"
 
 #define DEFINE_ALL_METHODS(type) \
     template <> \
     void qsort(type *arr, size_t arrsize, bool hasnan, bool descending) \
     { \
         avx512_qsort(arr, arrsize, hasnan, descending); \
+    } \
+    template <> \
+    void samplesort(type *arr, size_t arrsize, bool hasnan, bool descending, int threadCount) \
+    { \
+        avx512_samplesort(arr, arrsize, hasnan, descending, threadCount); \
     } \
     template <> \
     void qselect( \

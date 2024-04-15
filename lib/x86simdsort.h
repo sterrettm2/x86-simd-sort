@@ -17,6 +17,11 @@ template <typename T>
 XSS_EXPORT_SYMBOL void
 qsort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false);
 
+// samplesort
+template <typename T>
+XSS_EXPORT_SYMBOL void
+samplesort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false, int threadCount = -1);
+
 // quickselect
 template <typename T>
 XSS_EXPORT_SYMBOL void qselect(T *arr,

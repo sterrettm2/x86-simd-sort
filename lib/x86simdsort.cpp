@@ -64,6 +64,14 @@ namespace x86simdsort {
         (*internal_qsort##TYPE)(arr, arrsize, hasnan, descending); \
     }
 
+#define DECLARE_INTERNAL_samplesort(TYPE) \
+    static void (*internal_samplesort##TYPE)(TYPE *, size_t, bool, bool, int) = NULL; \
+    template <> \
+    void samplesort(TYPE *arr, size_t arrsize, bool hasnan, bool descending, int threadCount) \
+    { \
+        (*internal_samplesort##TYPE)(arr, arrsize, hasnan, descending, threadCount); \
+    }
+
 #define DECLARE_INTERNAL_qselect(TYPE) \
     static void (*internal_qselect##TYPE)(TYPE *, size_t, size_t, bool, bool) \
             = NULL; \
@@ -168,6 +176,7 @@ namespace x86simdsort {
 
 #ifdef __FLT16_MAX__
 DISPATCH(qsort, _Float16, ISA_LIST("avx512_spr"))
+DISPATCH(samplesort, _Float16, ISA_LIST("none"))
 DISPATCH(qselect, _Float16, ISA_LIST("avx512_spr"))
 DISPATCH(partial_qsort, _Float16, ISA_LIST("avx512_spr"))
 DISPATCH(argsort, _Float16, ISA_LIST("none"))
@@ -188,6 +197,10 @@ DISPATCH_ALL(qsort,
              (ISA_LIST("avx512_icl")),
              (ISA_LIST("avx512_skx", "avx2")),
              (ISA_LIST("avx512_skx", "avx2")))
+DISPATCH_ALL(samplesort,
+             (ISA_LIST("none")),
+             (ISA_LIST("avx512_skx")),
+             (ISA_LIST("avx512_skx")))
 DISPATCH_ALL(qselect,
              (ISA_LIST("avx512_icl")),
              (ISA_LIST("avx512_skx", "avx2")),

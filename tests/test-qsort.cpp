@@ -71,6 +71,50 @@ TYPED_TEST_P(simdsort, test_qsort_descending)
     }
 }
 
+TYPED_TEST_P(simdsort, test_samplesort_ascending)
+{
+    for (auto type : this->arrtype) {
+        bool hasnan = (type == "rand_with_nan") ? true : false;
+        for (auto size : this->arrsize) {
+            std::vector<TypeParam> basearr = get_array<TypeParam>(type, size);
+
+            // Ascending order
+            std::vector<TypeParam> arr = basearr;
+            std::vector<TypeParam> sortedarr = arr;
+            std::sort(sortedarr.begin(),
+                      sortedarr.end(),
+                      compare<TypeParam, std::less<TypeParam>>());
+            x86simdsort::samplesort(arr.data(), arr.size(), hasnan);
+            IS_SORTED(sortedarr, arr, type);
+
+            arr.clear();
+            sortedarr.clear();
+        }
+    }
+}
+
+TYPED_TEST_P(simdsort, test_samplesort_descending)
+{
+    for (auto type : this->arrtype) {
+        bool hasnan = (type == "rand_with_nan") ? true : false;
+        for (auto size : this->arrsize) {
+            std::vector<TypeParam> basearr = get_array<TypeParam>(type, size);
+
+            // Descending order
+            std::vector<TypeParam> arr = basearr;
+            std::vector<TypeParam> sortedarr = arr;
+            std::sort(sortedarr.begin(),
+                      sortedarr.end(),
+                      compare<TypeParam, std::greater<TypeParam>>());
+            x86simdsort::samplesort(arr.data(), arr.size(), hasnan, true);
+            IS_SORTED(sortedarr, arr, type);
+
+            arr.clear();
+            sortedarr.clear();
+        }
+    }
+}
+
 TYPED_TEST_P(simdsort, test_argsort)
 {
     for (auto type : this->arrtype) {
@@ -241,6 +285,8 @@ TYPED_TEST_P(simdsort, test_comparator)
 REGISTER_TYPED_TEST_SUITE_P(simdsort,
                             test_qsort_ascending,
                             test_qsort_descending,
+                            test_samplesort_ascending,
+                            test_samplesort_descending,
                             test_argsort,
                             test_argselect,
                             test_qselect_ascending,

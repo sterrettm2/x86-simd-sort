@@ -10,6 +10,10 @@ namespace avx512 {
     template <typename T>
     XSS_HIDE_SYMBOL void
     qsort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false);
+    // samplesort
+    template <typename T>
+    XSS_HIDE_SYMBOL void
+    samplesort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false, int threadCount = -1);
     // key-value quicksort
     template <typename T1, typename T2>
     XSS_EXPORT_SYMBOL void
@@ -42,6 +46,10 @@ namespace avx2 {
     template <typename T>
     XSS_HIDE_SYMBOL void
     qsort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false);
+    // samplesort
+    template <typename T>
+    XSS_HIDE_SYMBOL void
+    samplesort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false, int threadCount = -1);
     // key-value quicksort
     template <typename T1, typename T2>
     XSS_EXPORT_SYMBOL void
@@ -74,6 +82,10 @@ namespace scalar {
     template <typename T>
     XSS_HIDE_SYMBOL void
     qsort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false);
+    // samplesort
+    template <typename T>
+    XSS_HIDE_SYMBOL void
+    samplesort(T *arr, size_t arrsize, bool hasnan = false, bool descending = false, int threadCount = -1);
     // key-value quicksort
     template <typename T1, typename T2>
     XSS_EXPORT_SYMBOL void
