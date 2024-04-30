@@ -8,6 +8,7 @@
 #ifndef AVX512_QSORT_64BIT_KV
 #define AVX512_QSORT_64BIT_KV
 
+#include <omp.h>
 #include "xss-common-qsort.h"
 #include "xss-network-keyvaluesort.hpp"
 
@@ -392,10 +393,14 @@ X86_SIMD_SORT_INLINE void kvsort_(type1_t *keys,
     arrsize_t pivot_index = kvpartition_unrolled<vtype1, vtype2, 4>(
             keys, indexes, left, right + 1, pivot, &smallest, &biggest);
     if (pivot != smallest) {
+        bool parallelLeft = (pivot_index - left) > 10000;
+        #pragma omp task if(parallelLeft)
         kvsort_<vtype1, vtype2>(
                 keys, indexes, left, pivot_index - 1, max_iters - 1);
     }
     if (pivot != biggest) {
+        bool parallelRight = (pivot_index - left) > 10000;
+        #pragma omp task if(parallelRight)
         kvsort_<vtype1, vtype2>(
                 keys, indexes, pivot_index, right, max_iters - 1);
     }
@@ -429,6 +434,10 @@ xss_qsort_kv(T1 *keys, T2 *indexes, arrsize_t arrsize, bool hasnan)
     bool minarrsize = arrsize > 1 ? true : false;
 #endif // XSS_TEST_KEYVALUE_BASE_CASE
 
+#ifdef XSS_THREAD_LIMIT
+    omp_set_num_threads(XSS_THREAD_LIMIT);
+#endif
+
     if (minarrsize) {
         if constexpr (std::is_floating_point_v<T1>) {
             arrsize_t nan_count = 0;
@@ -436,11 +445,17 @@ xss_qsort_kv(T1 *keys, T2 *indexes, arrsize_t arrsize, bool hasnan)
                 nan_count
                         = replace_nan_with_inf<full_vector<T1>>(keys, arrsize);
             }
+            bool useParallel = arrsize > 10000;
+            #pragma omp parallel if(useParallel)
+            #pragma omp single
             kvsort_<keytype, valtype>(keys, indexes, 0, arrsize - 1, maxiters);
             replace_inf_with_nan(keys, arrsize, nan_count);
         }
         else {
             UNUSED(hasnan);
+            bool useParallel = arrsize > 10000;
+            #pragma omp parallel if(useParallel)
+            #pragma omp single
             kvsort_<keytype, valtype>(keys, indexes, 0, arrsize - 1, maxiters);
         }
     }

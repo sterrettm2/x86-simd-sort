@@ -34,6 +34,8 @@
  * [4] http://mitp-content-server.mit.edu:18180/books/content/sectbyfn?collid=books_pres_0&fn=Chapter%2027.pdf&id=8030
  *
  */
+ 
+#include <omp.h>
 #include "xss-pivot-selection.hpp"
 #include "xss-network-qsort.hpp"
 #include "xss-common-comparators.hpp"
@@ -558,10 +560,16 @@ qsort_(type_t *arr, arrsize_t left, arrsize_t right, arrsize_t max_iters)
     type_t leftmostValue = comparator::leftmost(smallest, biggest);
     type_t rightmostValue = comparator::rightmost(smallest, biggest);
 
-    if (pivot != leftmostValue)
+    if (pivot != leftmostValue){
+        bool parallelLeft = (pivot_index - left) > 10000;
+        #pragma omp task if(parallelLeft)
         qsort_<vtype, comparator>(arr, left, pivot_index - 1, max_iters - 1);
-    if (pivot != rightmostValue)
+    }
+    if (pivot != rightmostValue){
+        bool parallelRight = (pivot_index - left) > 10000;
+        #pragma omp task if(parallelRight)
         qsort_<vtype, comparator>(arr, pivot_index, right, max_iters - 1);
+    }
 }
 
 template <typename vtype, typename comparator, typename type_t>
@@ -617,6 +625,10 @@ X86_SIMD_SORT_INLINE void xss_qsort(T *arr, arrsize_t arrsize, bool hasnan)
                                       Comparator<vtype, true>,
                                       Comparator<vtype, false>>::type;
 
+#ifdef XSS_THREAD_LIMIT
+    omp_set_num_threads(XSS_THREAD_LIMIT);
+#endif
+
     if (arrsize > 1) {
         arrsize_t nan_count = 0;
         if constexpr (xss::fp::is_floating_point_v<T>) {
@@ -626,6 +638,8 @@ X86_SIMD_SORT_INLINE void xss_qsort(T *arr, arrsize_t arrsize, bool hasnan)
         }
 
         UNUSED(hasnan);
+        #pragma omp parallel
+        #pragma omp single
         qsort_<vtype, comparator, T>(
                 arr, 0, arrsize - 1, 2 * (arrsize_t)log2(arrsize));
 
