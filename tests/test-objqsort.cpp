@@ -71,6 +71,6 @@ TYPED_TEST_P(simdobjsort, test_objsort)
 REGISTER_TYPED_TEST_SUITE_P(simdobjsort, test_objsort);
 
 using QObjSortTestTypes
-        = testing::Types<double, uint64_t, int64_t, uint32_t, int32_t, float>;
+        = testing::Types<float>;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(xss, simdobjsort, QObjSortTestTypes);

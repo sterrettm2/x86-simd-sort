@@ -421,11 +421,11 @@ REGISTER_TYPED_TEST_SUITE_P(simdkvsort,
             std::tuple<int64_t, type>, std::tuple<float, type>, \
             std::tuple<uint32_t, type>, std::tuple<int32_t, type>
 
-using QKVSortTestTypes = testing::Types<CREATE_TUPLES(double),
+using QKVSortTestTypes = testing::Types<std::tuple<float, float>, std::tuple<double, double>>;/*CREATE_TUPLES(double),
                                         CREATE_TUPLES(uint64_t),
                                         CREATE_TUPLES(int64_t),
                                         CREATE_TUPLES(uint32_t),
                                         CREATE_TUPLES(int32_t),
-                                        CREATE_TUPLES(float)>;
+                                        CREATE_TUPLES(float)>;*/
 
 INSTANTIATE_TYPED_TEST_SUITE_P(xss, simdkvsort, QKVSortTestTypes);

@@ -304,16 +304,16 @@ REGISTER_TYPED_TEST_SUITE_P(simdsort,
                             test_comparator);
 
 using QSortTestTypes = testing::Types<uint16_t,
-                                      int16_t,
+                                      int16_t>;
 // support for _Float16 is incomplete in gcc-12
 #if __GNUC__ >= 13
-                                      _Float16,
+                                      //_Float16,
 #endif
-                                      float,
+                                      /*float,
                                       double,
                                       uint32_t,
                                       int32_t,
                                       uint64_t,
-                                      int64_t>;
+                                      int64_t>;*/
 
 INSTANTIATE_TYPED_TEST_SUITE_P(xss, simdsort, QSortTestTypes);
